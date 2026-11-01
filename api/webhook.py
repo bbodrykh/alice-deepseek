@@ -13,10 +13,8 @@ class handler(BaseHTTPRequestHandler):
     post_data = self.rfile.read(content_length)
     req = json.loads(post_data.decode("utf-8"))
 
-    # Извлекаем текст, который пользователь сказал Алисе
     user_text = req.get("request", {}).get("command", "").strip()
 
-    # Если фраза пустая (навык только что открылся)
     if not user_text:
       reply_text = (
           "Привет! Я подключена к DeepSeek через Dahl. Задавай любой вопрос,"
@@ -24,24 +22,21 @@ class handler(BaseHTTPRequestHandler):
       )
     else:
       try:
-        # Эндпоинт и модель под шлюз Dahl
         url = "https://inference.dahl.global/v1/chat/completions"
         payload = json.dumps({
-            "model": "deepseek/deepseek-chat",
+            "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
             "messages": [
                 {
                     "role": "system",
                     "content": (
-                        "Отвечай кратко, емко, понятно и живым разговорным"
-                        " языком без markdown-разметки (без звездочек и"
-                        " решеток), так как твой ответ будет зачитан голосом"
-                        " через колонку."
+                        "Отвечай кратко, понятно и живым разговорным языком без"
+                        " markdown-разметки (без звездочек, решеток и списков),"
+                        " так как твой ответ будет зачитан голосом вслух."
                     ),
                 },
                 {"role": "user", "content": user_text},
             ],
             "max_tokens": 350,
-            "temperature": 0.7,
         }).encode("utf-8")
 
         headers = {
@@ -55,11 +50,9 @@ class handler(BaseHTTPRequestHandler):
         with urllib.request.urlopen(api_req, timeout=12) as response:
           res_data = json.loads(response.read().decode("utf-8"))
           reply_text = res_data["choices"][0]["message"]["content"]
-
-      except Exception as e:
+      except Exception:
         reply_text = "Произошла ошибка при обращении к нейросети. Попробуй повторить вопрос."
 
-    # Формируем стандартный ответ для протокола Яндекс Диалогов
     response_payload = {
         "response": {"text": reply_text, "end_session": False},
         "version": "1.0",
@@ -71,7 +64,6 @@ class handler(BaseHTTPRequestHandler):
     self.wfile.write(json.dumps(response_payload).encode("utf-8"))
 
   def do_GET(self):
-    # Ответ на случайную проверку доступности через браузер
     self.send_response(200)
     self.send_header("Content-Type", "text/plain; charset=utf-8")
     self.end_headers()
